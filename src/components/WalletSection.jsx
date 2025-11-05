@@ -1,115 +1,132 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Wallet, Shield, CheckCircle2, IndianRupee, Loader2 } from 'lucide-react';
-import { useAuth } from './AuthProvider';
+import React, { useState } from 'react';
+import { Upload, IndianRupee, CheckCircle2, AlertCircle } from 'lucide-react';
 
-function fileToDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-export default function WalletSection() {
-  const { backend, token, user } = useAuth();
+export default function WalletSection({ onDepositSuccess }) {
   const [amount, setAmount] = useState('');
   const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState('Pending admin approval');
+  const [message, setMessage] = useState(null);
 
-  const submit = async () => {
-    if (!token) {
-      setMessage('Please sign in to submit a deposit.');
+  const backend = import.meta.env.VITE_BACKEND_URL;
+
+  const handleFile = (f) => {
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => setPreview(reader.result);
+    reader.readAsDataURL(f);
+    setFile(f);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setMessage(null);
+
+    const amt = parseInt(amount, 10);
+    if (!amt || amt <= 0) {
+      setMessage({ type: 'error', text: 'Enter a valid amount in INR.' });
       return;
     }
-    if (!amount || !file) {
-      setMessage('Enter amount and upload a screenshot.');
+    if (!preview) {
+      setMessage({ type: 'error', text: 'Upload a receipt screenshot.' });
       return;
     }
-    setSubmitting(true);
-    setMessage('Submitting...');
-    try {
-      const receipt_data_url = await fileToDataURL(file);
-      const res = await fetch(`${backend}/deposits`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ amount: Number(amount), receipt_data_url }),
-      });
-      if (!res.ok) throw new Error('Failed to submit deposit');
-      await res.json();
-      setMessage('Submitted! Awaiting admin review.');
+
+    // If backend is missing, simulate success for demo UX
+    if (!backend) {
+      onDepositSuccess && onDepositSuccess(amt);
+      setMessage({ type: 'success', text: 'Deposit submitted (demo). Set VITE_BACKEND_URL to enable API.' });
       setAmount('');
       setFile(null);
-    } catch (e) {
-      setMessage(e.message || 'Something went wrong');
+      setPreview('');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`${backend}/deposits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, receipt_data_url: preview })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      onDepositSuccess && onDepositSuccess(amt);
+      setMessage({ type: 'success', text: 'Deposit submitted! Awaiting approval.' });
+      setAmount('');
+      setFile(null);
+      setPreview('');
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to submit deposit. Check backend URL or try again.' });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <section id="wallet" className="relative bg-black py-16">
-      <div className="mx-auto max-w-7xl px-4">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500">
-            <Wallet className="h-5 w-5 text-black" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white md:text-3xl">INR Wallet & Deposits</h2>
-            <p className="text-sm text-zinc-400">Scan, upload receipt, and get credited after admin review.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.5 }} className="rounded-2xl border border-white/10 bg-zinc-900/60 p-5">
-            <h3 className="mb-2 text-lg font-semibold text-white">Add Funds</h3>
-            <p className="mb-4 text-sm text-zinc-300">Use the scanner provided by admin to deposit INR. After payment, upload the screenshot and your account will be credited once approved.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-black p-3 text-center text-zinc-300">
-                <div className="text-xs">UPI Accepted</div>
-                <div className="mt-1 font-semibold text-white">Fast & Secure</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black p-3 text-center text-zinc-300">
-                <div className="text-xs">INR</div>
-                <div className="mt-1 inline-flex items-center justify-center gap-1 font-semibold text-emerald-400">
-                  <IndianRupee className="h-4 w-4" /> Supported
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <input type="number" placeholder="Amount (INR)" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-              <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-white file:mr-3 file:rounded-md file:border-0 file:bg-emerald-500 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:bg-emerald-400" />
-              <button onClick={submit} disabled={submitting} className="w-full rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 px-4 py-2 font-semibold text-black shadow-lg hover:from-emerald-400 hover:to-cyan-400 disabled:opacity-60">
-                {submitting ? (<span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> Submitting</span>) : 'Submit for Review'}
-              </button>
-              <p className="text-xs text-zinc-400">Status: <span className="font-medium text-white">{message}</span></p>
-              {user && <p className="text-xs text-zinc-500">Signed in as {user.email}{user.is_admin ? ' (Admin)' : ''}</p>}
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.4 }} transition={{ delay: 0.1, duration: 0.5 }} className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 p-5">
-            <h3 className="mb-3 text-lg font-semibold text-white">Security & Compliance</h3>
-            <ul className="space-y-3 text-sm text-zinc-300">
-              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" /> 2-step review by admins before crediting coins.</li>
-              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" /> Transparent wallet history and responsible limits.</li>
-              <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" /> Data secured with modern best practices.</li>
-            </ul>
-
-            <div id="security" className="mt-5 rounded-xl border border-white/10 bg-black p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-zinc-300">
-                <Shield className="h-4 w-4 text-emerald-400" /> Account Protection
-              </div>
-              <p className="text-sm text-zinc-400">Your identity and transactions are safeguarded. Always play responsibly.</p>
-            </div>
-          </motion.div>
-        </div>
+    <div>
+      <div className="mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold">Wallet</h2>
+        <p className="text-white/70 text-sm">Deposit INR securely. Upload your receipt as a screenshot.</p>
       </div>
-    </section>
+
+      <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-6">
+          <label className="block text-sm mb-2 text-white/80">Amount (INR)</label>
+          <div className="relative">
+            <input
+              type="number"
+              min="1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full rounded-xl bg-slate-950/60 border border-white/10 px-4 py-3 pr-10 outline-none focus:ring-2 focus:ring-fuchsia-500/40"
+              placeholder="Enter amount"
+            />
+            <IndianRupee size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50" />
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm mb-2 text-white/80">Receipt Screenshot</label>
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-white/15 rounded-xl cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+              <Upload className="text-white/60" />
+              <span className="mt-2 text-sm text-white/70">Click to upload image</span>
+            </label>
+          </div>
+
+          {preview && (
+            <div className="mt-6">
+              <label className="block text-sm mb-2 text-white/80">Preview</label>
+              <img src={preview} alt="Receipt preview" className="w-full max-h-72 object-contain rounded-xl border border-white/10" />
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-1 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <h3 className="font-semibold mb-2">UPI Details</h3>
+            <p className="text-sm text-white/70">Pay to our UPI and upload your receipt. Your balance updates after approval.</p>
+            <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-3 text-sm">
+              <div className="flex items-center justify-between"><span className="text-white/60">UPI</span><span className="font-medium">desibet@upi</span></div>
+              <div className="flex items-center justify-between mt-1"><span className="text-white/60">Min</span><span className="font-medium">₹100</span></div>
+            </div>
+          </div>
+
+          <button
+            disabled={submitting}
+            type="submit"
+            className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3 font-semibold shadow hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Submitting…' : 'Submit Deposit'}
+          </button>
+
+          {message && (
+            <div className={`flex items-start gap-2 rounded-xl border p-3 ${message.type === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-rose-400/30 bg-rose-400/10 text-rose-200'}`}>
+              {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              <span className="text-sm">{message.text}</span>
+            </div>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }

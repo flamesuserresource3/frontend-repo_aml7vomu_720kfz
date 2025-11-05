@@ -1,58 +1,31 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import GamesShowcase from './components/GamesShowcase';
-import WalletSection from './components/WalletSection';
-import WalletHistory from './components/WalletHistory';
-import GameCenter from './components/GameCenter';
-import { AuthProvider } from './components/AuthProvider';
-import ProtectedRoute from './components/ProtectedRoute';
-import AdminDashboard from './components/AdminDashboard';
+import React, { useState } from 'react';
+import Navbar from './components/Navbar.jsx';
+import Hero from './components/Hero.jsx';
+import GamesShowcase from './components/GamesShowcase.jsx';
+import WalletSection from './components/WalletSection.jsx';
 
-function Footer() {
+function App() {
+  const [balance, setBalance] = useState(0);
+
   return (
-    <footer className="border-t border-white/10 bg-black py-8 text-center">
-      <div className="mx-auto max-w-7xl px-4">
-        <p className="text-sm text-zinc-400">© {new Date().getFullYear()} BlazeBet. Play responsibly. 18+ only.</p>
-      </div>
-    </footer>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+      <Navbar balance={balance} />
+      <main className="flex-1">
+        <section id="home" className="relative h-[80vh] md:h-[90vh]">
+          <Hero onGetStartedScrollTo="#wallet" />
+        </section>
+        <section id="games" className="py-16 md:py-24 container mx-auto px-4">
+          <GamesShowcase />
+        </section>
+        <section id="wallet" className="py-16 md:py-24 container mx-auto px-4">
+          <WalletSection onDepositSuccess={(amount) => setBalance((b) => b + amount)} />
+        </section>
+      </main>
+      <footer className="border-t border-white/10 py-8 text-center text-sm text-white/60">
+        © {new Date().getFullYear()} DesiBet • Play responsibly. 18+
+      </footer>
+    </div>
   );
 }
 
-function HomePage() {
-  return (
-    <>
-      <Hero />
-      <GamesShowcase />
-      <WalletSection />
-      <WalletHistory />
-    </>
-  );
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-black text-white">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/wallet" element={<><WalletSection /><WalletHistory /></>} />
-            <Route path="/games" element={<GameCenter />} />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute adminOnly>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<div className="p-10 text-center text-zinc-400">Not found. <Link to="/" className="text-emerald-400">Go home</Link></div>} />
-          </Routes>
-          <Footer />
-        </div>
-      </BrowserRouter>
-    </AuthProvider>
-  );
-}
+export default App;
