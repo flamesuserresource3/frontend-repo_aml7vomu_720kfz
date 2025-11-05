@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, LogIn, Wallet, Settings, Shield, LogOut, User } from 'lucide-react';
+import { Crown, LogIn, Wallet, Settings, Shield, LogOut, User, IndianRupee } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 
@@ -69,6 +69,11 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {user && (
+              <div className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-emerald-300 md:flex">
+                <IndianRupee className="h-4 w-4" /> {(user.balance ?? 0).toLocaleString('en-IN')}
+              </div>
+            )}
             <Link to="/wallet" className="hidden items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5 md:flex">
               <Wallet className="h-4 w-4" /> INR Wallet
             </Link>

@@ -3,6 +3,8 @@ import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import GamesShowcase from './components/GamesShowcase';
 import WalletSection from './components/WalletSection';
+import WalletHistory from './components/WalletHistory';
+import GameCenter from './components/GameCenter';
 import { AuthProvider } from './components/AuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminDashboard from './components/AdminDashboard';
@@ -23,6 +25,7 @@ function HomePage() {
       <Hero />
       <GamesShowcase />
       <WalletSection />
+      <WalletHistory />
     </>
   );
 }
@@ -35,8 +38,8 @@ export default function App() {
           <Navbar />
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/wallet" element={<WalletSection />} />
-            <Route path="/games" element={<GamesShowcase />} />
+            <Route path="/wallet" element={<><WalletSection /><WalletHistory /></>} />
+            <Route path="/games" element={<GameCenter />} />
             <Route
               path="/admin"
               element={
